@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>WHO IS NAILONG</title>
+<script src="https://unpkg.com/globe.gl@2.27.0/dist/globe.gl.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100%; height: 100%;
+    overflow: hidden;
+    background: radial-gradient(ellipse at 50% 40%, #101833 0%, #05070f 60%, #000 100%);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+    color: #f5d97a;
+  }
+  #globe { position: fixed; inset: 0; cursor: grab; }
+  #globe:active { cursor: grabbing; }
+
+  /* ---------- 加载态 Loading ---------- */
+  .loader-mask {
+    position: fixed; inset: 0;
+    z-index: 1000;
+    background: radial-gradient(ellipse at 50% 40%, #151d3b 0%, #060812 70%, #000 100%);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 16px;
+    transition: opacity .6s cubic-bezier(0.4, 0, 0.2, 1), visibility .6s;
+    pointer-events: all;
+  }
+  .loader-mask.fade-out {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+  .loader-dragon {
+    font-size: 52px;
+    display: inline-block;
+    filter: drop-shadow(0 0 18px rgba(255,217,77,.85));
+    animation: loaderSpin 1.8s ease-in-out infinite;
+  }
+  @keyframes loaderSpin {
+    0% { transform: rotate(0deg) scale(0.9); }
+    50% { transform: rotate(180deg) scale(1.15); }
+    100% { transform: rotate(360deg) scale(0.9); }
+  }
+  .loader-text {
+    font-size: 16px;
+    letter-spacing: .25em;
+    color: #ffd94d;
+    text-shadow: 0 0 12px rgba(255,217,77,.6), 0 0 30px rgba(255,170,0,.4);
+    font-weight: 600;
+  }
+
+  /* ---------- Header 霓虹标题 ---------- */
+  .header {
+    position: fixed; top: 0; left: 0; right: 0;
+    padding: 20px 20px 32px;
+    text-align: center;
+    pointer-events: none;
+    z-index: 10;
+    background: linear-gradient(180deg, rgba(3,5,12,.8) 0%, rgba(3,5,12,.3) 65%, transparent 100%);
+  }
+  .header h1 {
+    font-size: clamp(24px, 4.4vw, 46px);
+    font-weight: 900;
+    letter-spacing: .12em;
+    color: #fff8db;
+    text-shadow:
+      0 0 8px #fff,
+      0 0 18px #ffd94d,
+      0 0 36px #ffae00,
+      0 0 65px rgba(255,140,0,.6),
+      3px 3px 0 #6e3e00;
+    transform: rotate(-0.8deg);
+    margin: 0;
+  }
+
+
+  /* ---------- 精致毛玻璃信息卡片 ---------- */
+  .card {
+    position: fixed;
+    right: 24px; bottom: 58px;
+    z-index: 40;
+    width: 320px; max-width: calc(100vw - 32px);
+    background: linear-gradient(145deg, rgba(34, 28, 12, 0.88), rgba(18, 15, 6, 0.92));
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1.5px solid rgba(255, 217, 77, 0.65);
+    border-radius: 18px;
+    padding: 16px 18px 14px;
+    box-shadow:
+      0 0 28px rgba(255,217,77,.25),
+      0 12px 36px rgba(0,0,0,.75);
+    opacity: 0;
+    transform: translateY(14px) scale(.96);
+    transition: opacity .24s cubic-bezier(0.16, 1, 0.3, 1), transform .24s cubic-bezier(0.16, 1, 0.3, 1);
+    pointer-events: none;
+  }
+  .card.show {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    pointer-events: auto;
+  }
+  .card-close {
+    position: absolute; top: 10px; right: 12px;
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: rgba(255,255,255,.08);
+    border: none;
+    color: #ffdf80;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    line-height: 1;
+    transition: background .15s;
+  }
+  .card-close:hover { background: rgba(255,217,77,.25); }
+  .card .domain {
+    font-size: 18px; font-weight: 800; color: #ffd94d;
+    text-shadow: 0 0 10px rgba(255,217,77,.55);
+    word-break: break-all; line-height: 1.3;
+    padding-right: 22px;
+  }
+  .card .school-wrap {
+    margin-top: 8px;
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  }
+  .card .school {
+    font-size: 15px; color: #fff5d6; font-weight: 700;
+  }
+  .card .school-badge {
+    font-size: 10px;
+    padding: 1px 6px;
+    background: rgba(255,217,77,.18);
+    color: #ffd94d;
+    border: 1px solid rgba(255,217,77,.4);
+    border-radius: 6px;
+  }
+  .card .meta {
+    margin-top: 7px; font-size: 11.5px; color: rgba(255,240,200,.75); line-height: 1.6;
+  }
+  .card .btn-go {
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    width: 100%;
+    margin-top: 12px;
+    padding: 8px 12px;
+    background: linear-gradient(135deg, #ffd94d, #f5a623);
+    color: #1a1200;
+    font-weight: 700;
+    font-size: 12.5px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    text-decoration: none;
+    box-shadow: 0 0 14px rgba(255,217,77,.4);
+    transition: transform .12s, box-shadow .12s, filter .12s;
+  }
+  .card .btn-go:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 0 20px rgba(255,217,77,.7);
+    filter: brightness(1.06);
+  }
+  .card .btn-go:active { transform: translateY(1px); }
+  .card .btn-go.disabled {
+    background: #444; color: #888;
+    box-shadow: none; cursor: not-allowed;
+  }
+
+  /* ---------- Marker (44px 真实头像) ---------- */
+  .marker {
+    position: relative;
+    width: 44px; height: 44px;
+    margin: -22px 0 0 -22px;
+    cursor: pointer;
+    touch-action: manipulation;
+    user-select: none; -webkit-user-select: none;
+    animation: markerFloat 2.8s ease-in-out infinite;
+    transition: transform .18s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+    /* 必须显式声明：globe.gl 的 CSS2DRenderer layer 默认 pointer-events:none，
+       不恢复的话点击全被 canvas 吃掉，奶龙根本点不动。 */
+    pointer-events: auto;
+  }
+  .marker-avatar-box {
+    position: relative;
+    width: 100%; height: 100%;
+    border-radius: 50%;
+    border: 2px solid #ffffff;
+    background: radial-gradient(circle at 35% 30%, #fff7d6, #ffd94d 60%, #e8a800);
+    box-shadow: 0 0 12px rgba(255,217,77,.85), 0 4px 12px rgba(0,0,0,.65);
+    overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+    transition: box-shadow .18s, border-color .18s;
+  }
+  .marker img.avatar {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    display: block;
+    pointer-events: none;
+  }
+  .marker:hover {
+    /* 不能用 transform: 覆盖——globe.gl 每帧用 transform:translate() 给 marker 定位，
+       一覆盖就被扔到 (0,0)。也不能在 .marker 上 scale——globe.gl 写的
+       translate(-50%,-50%) 按元素自身尺寸计算，尺寸一变中心点就飘走。
+       缩放一律作用在内层 .marker-avatar-box 上。 */
+    z-index: 50;
+    animation-play-state: paused;
+  }
+  .marker:hover .marker-avatar-box {
+    scale: 1.15;
+    border-color: #fffef2;
+    box-shadow: 0 0 22px rgba(255,235,140,1), 0 0 45px rgba(255,170,0,.9);
+  }
+  @keyframes markerFloat {
+    /* 只写独立属性，绝不写 transform——globe.gl 每帧用 transform:translate() 定位 marker */
+    0%, 100% { translate: 0 0; }
+    50% { translate: 0 -3px; }
+  }
+
+  /* 选中态：大幅放大 + 抖动 + 强烈光晕
+     关键：scale/rotate 只能作用在内层 .marker-avatar-box 上。
+     globe.gl 每帧给外层 .marker 写 transform: translate(-50%,-50%) translate(Xpx,Ypx)，
+     其中 -50% 是按元素自身尺寸算的。一旦外层被 scale，尺寸变了、-50% 的基准跟着变，
+     marker 就会飞出地球表面。内层缩放不影响外层的定位数学。 */
+  .marker.laughing {
+    z-index: 999;
+    animation-play-state: paused;
+  }
+  .marker.laughing .marker-avatar-box {
+    border-color: #ffe600;
+    box-shadow: 0 0 28px #ffffff, 0 0 70px rgba(255,180,0,1);
+    animation: laughShake .7s ease-in-out 2;
+  }
+  @keyframes laughShake {
+    0%, 100% { scale: 2.6; rotate: 0deg; translate: 0 0; }
+    25% { scale: 2.9; rotate: -14deg; translate: 0 3px; }
+    50% { scale: 2.5; rotate: 12deg; translate: 0 -3px; }
+    75% { scale: 2.9; rotate: -10deg; translate: 0 2px; }
+  }
+
+
+  /* 扩充触控区 */
+  .marker::after {
+    content: ''; position: absolute; inset: -8px; border-radius: 50%;
+  }
+  .marker .badge {
+    position: absolute; bottom: -6px; right: -8px;
+    font-size: 9px; padding: 1px 5px;
+    background: #1a1405; color: #ffd94d;
+    border: 1px solid rgba(255,217,77,.6);
+    border-radius: 8px;
+    white-space: nowrap;
+    pointer-events: none;
+    box-shadow: 0 2px 6px rgba(0,0,0,.6);
+  }
+
+  /* 失联样式 */
+  .marker.is-dead {
+    filter: grayscale(0.85) opacity(0.7);
+  }
+  .marker.is-dead .badge {
+    background: #2a1515; color: #ff9999;
+    border-color: #ff5555;
+  }
+
+  /* ---------- 位置飘出弹幕 ---------- */
+  .fly-danmaku {
+    position: fixed;
+    transform: translate(-50%, -50%);
+    font-size: clamp(20px, 3.8vw, 34px);
+    font-weight: 900;
+    color: #ffd94d;
+    text-shadow: 0 0 14px rgba(255,217,77,.95), 0 0 35px rgba(255,140,0,.85), 3px 3px 0 #6e3e00;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 90;
+    animation: danmakuFloatUp 2s cubic-bezier(0.2, 0.9, 0.3, 1) forwards;
+  }
+  @keyframes danmakuFloatUp {
+    0% { opacity: 0; transform: translate(-50%, 0) scale(0.6) rotate(-4deg); }
+    18% { opacity: 1; transform: translate(-50%, -28px) scale(1.15) rotate(2deg); }
+    38% { opacity: 1; transform: translate(-50%, -52px) scale(1) rotate(-1deg); }
+    80% { opacity: 0.9; transform: translate(-50%, -95px) scale(1.02); }
+    100% { opacity: 0; transform: translate(-50%, -135px) scale(1.04); }
+  }
+
+
+  /* ---------- 移动端响应式适配 ---------- */
+  @media (max-width: 640px) {
+    .header { padding: 14px 12px 24px; }
+    .marker {
+      width: 38px; height: 38px;
+      margin: -19px 0 0 -19px;
+    }
+    .marker .badge { display: none; }
+    .card {
+      right: 0 !important; left: 0 !important;
+      bottom: 0 !important;
+      width: 100% !important; max-width: 100vw !important;
+      border-radius: 20px 20px 0 0 !important;
+      border-left: none; border-right: none; border-bottom: none;
+      padding: 18px 20px 24px;
+      transform: translateY(100%);
+    }
+    .card.show {
+      transform: translateY(0);
+    }
+  }
+</style>
+</head>
+<body>
+
+<!-- 加载态遮罩 -->
+<div class="loader-mask" id="loader">
+  <div class="loader-text">LOADING…</div>
+</div>
+
+<div id="globe"></div>
+
+<!-- 顶部霓虹标题 -->
+<div class="header">
+  <h1>WHO IS NAILONG</h1>
+</div>
+
+<!-- 精致毛玻璃卡片 -->
+<div class="card" id="card"></div>
+
+<script>
+/* ============ 立绘映射（编号 -> 实际图片文件） ============ */
+const IMG_MAP = {
+  1: 'assets/nailong/nl_cauc.png',    // 中飞院
+  2: 'assets/nailong/nl_dlut.png',    // 大连理工
+  3: 'assets/nailong/nl_xjtu.png',    // 西安交大
+  4: 'assets/nailong/nl_tongji.png',  // 同济
+  5: 'assets/nailong/nl_scut.png',    // 华南理工
+  6: 'assets/nailong/nl_bjut.png',    // 北京工业大学
+  7: 'assets/nailong/nl_nuaa.png',    // 南京航空航天
+  8: 'assets/nailong/nl_zcmu.png',    // 浙江中医药
+  9: 'assets/nailong/nl_lzu.png',     // 兰州大学
+  10: 'assets/nailong/nl_hust.png',   // 华中科技
+  11: 'assets/nailong/nl_dlut.png',   // 大连理工(重复域名)
+  12: 'assets/nailong/nl_dlut.png',   // 大连理工(重复域名)
+  14: 'assets/nailong/nl_mcysu.png',  // 燕大MC社
+  15: 'assets/nailong/nl_neu.png',    // 东北大学
+  16: 'assets/nailong/nl_dlut.png',   // 大连理工(重复域名)
+  18: 'assets/nailong/nl_wmu.png',    // 温州医科大
+  19: 'assets/nailong/nl_hhu.png',    // 河海大学
+  20: 'assets/nailong/nl_nwafu.png',  // 西北农林
+};
+function getNailongImg(n, isLaugh = false) {
+  if (IMG_MAP[n]) {
+    if (typeof IMG_MAP[n] === 'object') {
+      return isLaugh ? (IMG_MAP[n].laugh || `assets/nailong/n${n}_laugh.jpg`) : IMG_MAP[n].normal;
+    }
+    return isLaugh ? `assets/nailong/n${n}_laugh.jpg` : IMG_MAP[n];
+  }
+  return isLaugh ? `assets/nailong/n${n}_laugh.jpg` : `assets/nailong/n${n}.png`;
+}
+
+/* ============ 数据（内联自 data.js，status=dead 的两条不上球） ============ */
+const DATA = [
+  {"n":1,"domain":"奶龙大学.com","school":"中国民用航空飞行学院","short":"中飞院","lat":30.5560,"lng":104.0078,"city":"四川广汉","outfit":"机长制服，肩章四道杠，手持登机牌","final":"https://奶龙大学.com/","created":"2024-10-31","status":"ok","emoji":"‍️"},
+  {"n":2,"domain":"中国奶龙大学.com","school":"大连理工大学","short":"大连理工","lat":38.8804,"lng":121.5215,"city":"辽宁大连","outfit":"学士服加学位帽，帽穗垂下，手持毕业证","final":"https://nailong.dykey.net/","created":"2026-10-12","status":"redirect","emoji":""},
+  {"n":3,"domain":"奶龙交通大学.com","school":"西安交通大学","short":"西安交大","lat":34.2461,"lng":108.9750,"city":"陕西西安","outfit":"老式铁路工装，头戴瓜皮帽，手持信号旗","final":"https://www.xn--tlq19wzg04enx6i9ot.com/","created":"2026-10-12","status":"redirect","emoji":""},
+  {"n":4,"domain":"上海奶龙大学.com","school":"同济大学","short":"同济","lat":31.2845,"lng":121.4945,"city":"上海","outfit":"深蓝建筑师西装，手持卷起的蓝图，头戴安全帽","final":"https://www.tongji.edu.cn/","created":"2026-10-12","status":"redirect","emoji":""},
+  {"n":5,"domain":"奶龙理工大学.com","school":"华南理工大学","short":"华南理工","lat":23.0435,"lng":113.3998,"city":"广东广州","outfit":"橙色工科实验服，手持齿轮模型，护目镜推在头顶","final":"https://www.scut.edu.cn/","created":"2026-10-12","status":"redirect","emoji":"️"},
+  {"n":6,"domain":"北京奶龙大学.com","school":"北京工业大学","short":"北工大","lat":39.8756,"lng":116.4780,"city":"北京","outfit":"红色棒球服，手持螺丝刀，腰挂工具腰带","final":"https://www.bjut.edu.cn/","created":"2026-10-12","status":"redirect","emoji":""},
+  {"n":7,"domain":"南京奶龙大学.com","school":"南京航空航天大学","short":"南航","lat":32.0381,"lng":118.8132,"city":"江苏南京","outfit":"银蓝色飞行员夹克，手持飞机模型，头戴飞行头盔","final":"https://nuaa.edu.cn/","created":"2024-10-21","status":"redirect","emoji":"️"},
+  {"n":8,"domain":"浙江奶龙大学.com","school":"浙江中医药大学","short":"浙中医大","lat":30.2631,"lng":120.1212,"city":"浙江杭州","outfit":"青色中式对襟长衫，手持草药蒲扇，腰系药葫芦","final":"https://www.zcmu.edu.cn/","created":"2026-10-12","status":"redirect","emoji":""},
+  {"n":9,"domain":"国立奶龙大学.com","school":"兰州大学","short":"兰大","lat":36.0496,"lng":103.8568,"city":"甘肃兰州","outfit":"厚毛呢大衣围巾，手持罗盘，背登山包","final":"https://www.lzu.edu.cn/","created":"2026-10-12","status":"redirect","emoji":""},
+  {"n":10,"domain":"奶龙科技大学.com","school":"华中科技大学","short":"华科","lat":30.5122,"lng":114.4087,"city":"湖北武汉","outfit":"灰色连帽卫衣，头戴护目镜，手持绿色电路板","final":"https://www.hust.edu.cn/","created":"2026-10-12","status":"redirect","emoji":""},
+  {"n":11,"domain":"世界奶龙大学.com","school":"大连理工大学","short":"大连理工","lat":38.8804,"lng":121.5215,"city":"辽宁大连","outfit":"日式和服外套，手持折扇，头戴学生帽","final":"https://drise.dlut.edu.cn/","created":"2026-10-12","status":"redirect","emoji":""},
+  {"n":12,"domain":"nailong.dykey.net","school":"大连理工大学","short":"大连理工","lat":38.8804,"lng":121.5215,"city":"辽宁大连","outfit":"校徽卫衣，手持发光显示器，身后悬浮代码","final":"https://nailong.dykey.net/","created":"","status":"ok","emoji":""},
+  {"n":14,"domain":"www.原神启动.com","school":"燕山大学 MC 社","short":"燕大MC社","lat":39.9436,"lng":119.5243,"city":"河北秦皇岛","outfit":"像素风方块盔甲，手持钻石镐，腰挂红石火把","final":"http://ysumc.net/","created":"","status":"redirect","emoji":"️"},
+  {"n":15,"domain":"世界奶蛙大学.com","school":"东北大学","short":"东大","lat":41.7669,"lng":123.4292,"city":"辽宁沈阳","outfit":"东北花棉袄，头戴狗皮帽，手持糖葫芦","final":"https://世界奶蛙大学.com/","created":"2026-10-12","status":"ok","emoji":""},
+  {"n":16,"domain":"奶龙学院.com","school":"大连理工大学","short":"软院","lat":38.8804,"lng":121.5215,"city":"辽宁大连","outfit":"深灰连帽衫印代码字样，手持笔记本电脑，戴细框眼镜","final":"https://ss.dlut.edu.cn/","created":"2026-10-12","status":"redirect","emoji":""},
+  {"n":18,"domain":"奶蛙医科大学.com","school":"温州医科大学","short":"温医大","lat":27.9157,"lng":120.6952,"city":"浙江温州","outfit":"白色医生大褂，颈挂听诊器，手持病历夹","final":"https://www.wmu.edu.cn/","created":"2026-10-13","status":"redirect","emoji":""},
+  {"n":19,"domain":"hhu-naiwa.pages.dev","school":"河海大学","short":"河海","lat":32.0579,"lng":118.7497,"city":"江苏南京","outfit":"橙色救生衣，手持水质采样瓶，头戴草帽","final":"https://hhu-naiwa.pages.dev/","created":"","status":"ok","emoji":""},
+  {"n":20,"domain":"奶农大学.com","school":"西北农林科技大学","short":"西农","lat":34.2657,"lng":108.0895,"city":"陕西杨凌","outfit":"迷彩工装戴草帽，手持麦穗，脚穿雨靴","final":"https://www.nwafu.edu.cn/","created":"2026-10-13","status":"redirect","emoji":""}
+];
+
+/* 大连理工 4 个 marker 同坐标 → 轻微散开避免重叠 */
+const OFFSETS = { 2:[0,0], 11:[1.4,0.9], 12:[-1.3,1.0], 16:[0.1,-1.5] };
+DATA.forEach(d => {
+  if (OFFSETS[d.n]) { d.lat += OFFSETS[d.n][1]; d.lng += OFFSETS[d.n][0]; }
+});
+
+/* ============ 音效 ============ */
+const laughAudio = new Audio('assets/audio/laugh.mp3');
+laughAudio.preload = 'auto';
+function playLaugh() {
+  try {
+    laughAudio.currentTime = 0;
+    const p = laughAudio.play();
+    if (p) p.catch(() => {});
+  } catch (e) {}
+}
+
+/* ============ 精致毛玻璃信息卡片 ============ */
+const card = document.getElementById('card');
+let cardTimer = null;
+function showCard(d) {
+  const isDead = d.status === 'dead';
+  card.innerHTML = `
+    <button class="card-close" onclick="card.classList.remove('show'); event.stopPropagation();" title="关闭">&times;</button>
+    <div class="domain">${d.domain}</div>
+    <div class="school-wrap">
+      <span class="school">${d.school}</span>
+      <span class="school-badge">${d.short}</span>
+      ${isDead ? '<span class="school-badge" style="background:#4a1c1c;color:#ff9999;border-color:#ff5555;">已失联</span>' : ''}
+    </div>
+    <div class="meta">${d.city}${d.created ? ' &nbsp;·&nbsp; REGISTERED ' + d.created : ''}</div>
+    <a class="btn-go ${isDead ? 'disabled' : ''}" ${isDead ? '' : `href="${d.final}" target="_blank" rel="noopener"`} onclick="event.stopPropagation();">
+      ${isDead ? 'DOMAIN UNREACHABLE' : 'VISIT OFFICIAL SITE'}
+    </a>`;
+  card.classList.add('show');
+  clearTimeout(cardTimer);
+  cardTimer = setTimeout(() => card.classList.remove('show'), 6000);
+}
+
+/* ============ 弹幕欢呼（从 marker 坐标向上飘出） ============ */
+function cheer(d, clientX, clientY) {
+  const dm = document.createElement('div');
+  dm.className = 'fly-danmaku';
+  dm.textContent = `${d.short}! ${d.short}!`;
+  const x = clientX || window.innerWidth / 2;
+  const y = clientY || window.innerHeight / 2;
+  dm.style.left = `${x}px`;
+  dm.style.top = `${y}px`;
+  document.body.appendChild(dm);
+  setTimeout(() => dm.remove(), 2000);
+}
+
+/* ============ Marker 元素（globe.gl htmlElementsLayer） ============ */
+const markerEls = new Map();
+/* 大笑动画与跳转时序：动画 .7s×2=1.4s，弹幕 2s，跳转延到 2.2s 让用户看完 */
+const LAUGH_ANIM_MS = 1400;
+const LAUGH_OPEN_DELAY = 2200;
+let openTimer = null;
+function makeMarker(d) {
+  const el = document.createElement('div');
+  el.className = 'marker';
+  el.title = d.domain;
+  if (d.status === 'dead') el.classList.add('is-dead');
+
+  const normalSrc = getNailongImg(d.n, false);
+  el.innerHTML = `
+    <div class="marker-avatar-box">
+      <img class="avatar" src="${normalSrc}" alt="${d.school}" data-normal="${normalSrc}" />
+    </div>
+    <span class="badge">${d.status === 'dead' ? 'DEAD' : d.short}</span>`;
+
+  // 首屏头像加载失败也退回常态图，绝不隐藏
+  const firstImg = el.querySelector('.avatar');
+  firstImg.onerror = function () {
+    this.onerror = null;
+    this.src = this.dataset.normal || normalSrc;
+  };
+
+  // 呼吸动画随机 delay
+  el.style.animationDelay = (Math.random() * 2.8).toFixed(2) + 's';
+  markerEls.set(d.n, el);
+
+  el.addEventListener('mouseenter', () => { if (!isTouch) showCard(d); });
+  el.addEventListener('mouseleave', () => { if (!isTouch) { clearTimeout(cardTimer); cardTimer = setTimeout(() => card.classList.remove('show'), 1200); } });
+
+  /* ---------- 触发：pointerdown 记录起点，pointerup 位移 < 8px 才算点击 ----------
+     globe.gl 的 marker 是 CSS2DObject，靠 click 事件的 target 匹配不可靠：
+     mousedown 命中 marker、mouseup 常落到 canvas（地球在动），click 就丢了。
+     这里自己在 marker 上判定轻点，绕开 target 漂移。 */
+  let downX = 0, downY = 0, downOnMarker = false;
+  el.addEventListener('pointerdown', (e) => {
+    downX = e.clientX; downY = e.clientY; downOnMarker = true;
+  });
+  el.addEventListener('pointerup', (e) => {
+    if (!downOnMarker) return;
+    downOnMarker = false;
+    const dist = Math.hypot(e.clientX - downX, e.clientY - downY);
+    if (dist > 8) return;      // 拖动地球，不算点击
+    e.stopPropagation();
+    fire(e.clientX, e.clientY);
+  });
+  el.addEventListener('pointercancel', () => { downOnMarker = false; });
+
+  /* click 兜底：某些触屏/老旧浏览器只派发 click 不派发 pointer 事件。
+     lastFire 去重，避免 pointerup + click 双触发连笑两次。 */
+  let lastFire = 0;
+  el.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const now = Date.now();
+    if (now - lastFire < 600) return;   // 刚被 pointerup 触发过
+    fire(e.clientX, e.clientY);
+  });
+
+  function fire(cx, cy) {
+    lastFire = Date.now();
+    triggerMarker(cx, cy);
+  }
+
+  function triggerMarker(cx, cy) {
+    // 失联域名不触发跳转
+    if (d.status === 'dead') {
+      showCard(d);
+      return;
+    }
+
+    // 1. 大笑音效（用户手势内触发）
+    playLaugh();
+
+    // 2. 立绘切换大笑姿态 + 晃动动画
+    const img = el.querySelector('.avatar');
+    const laughSrc = getNailongImg(d.n, true);
+
+    // 任何加载失败都退回常态图，marker 永不消失、永不隐藏
+    img.onerror = function() {
+      this.onerror = null;
+      this.src = normalSrc;
+    };
+    img.src = laughSrc;
+
+    el.classList.remove('laughing');
+    void el.offsetWidth;
+    el.classList.add('laughing');
+
+    setTimeout(() => {
+      img.onerror = function() {
+        this.onerror = null;
+        this.src = normalSrc;
+      };
+      img.src = normalSrc;
+      el.classList.remove('laughing');
+    }, LAUGH_ANIM_MS);
+
+    // 3. 卡片展示
+    showCard(d);
+
+    // 4. 从点击位置向上飘出欢呼弹幕
+    cheer(d, cx, cy);
+
+    // 5. 等大笑动画 + 弹幕飘完，再打开官网（默认 2.2s，够看完捧腹大笑）
+    const openDelay = LAUGH_OPEN_DELAY;
+    clearTimeout(openTimer);
+    openTimer = setTimeout(() => window.open(d.final, '_blank', 'noopener'), openDelay);
+  }
+  return el;
+}
+const isTouch = 'ontouchstart' in window;
+
+/* ============ 加载遮罩淡出 ============ */
+const loader = document.getElementById('loader');
+function dismissLoader() {
+  if (loader && !loader.classList.contains('fade-out')) {
+    loader.classList.add('fade-out');
+  }
+}
+
+/* ============ 初始化地球 ============ */
+const globe = Globe({ animateIn: true, waitForGlobeReady: true })
+  (document.getElementById('globe'))
+  .globeImageUrl('https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg')
+  .bumpImageUrl('https://unpkg.com/three-globe/example/img/earth-topology.png')
+  .backgroundImageUrl('https://unpkg.com/three-globe/example/img/night-sky.png')
+  .showAtmosphere(true)
+  .atmosphereColor('#ffdf80')
+  .atmosphereAltitude(0.18)
+  .htmlElementsData(DATA)
+  .htmlElement(makeMarker)
+  .htmlAltitude(0.02)
+  .onGlobeReady(() => {
+    dismissLoader();
+  });
+
+// 安全备选：若资源就绪触发慢，2.8s 后强行淡出加载态
+setTimeout(dismissLoader, 2800);
+
+/* 控制器：阻尼、缩放限制 */
+const controls = globe.controls();
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.minDistance = 160;
+controls.maxDistance = 500;
+controls.autoRotate = true;
+controls.autoRotateSpeed = 0.5;
+
+// 用户交互时暂停自转，3 秒后恢复
+let rotateTimer = null;
+controls.addEventListener('start', () => { controls.autoRotate = false; clearTimeout(rotateTimer); });
+controls.addEventListener('end', () => {
+  clearTimeout(rotateTimer);
+  rotateTimer = setTimeout(() => controls.autoRotate = true, 3000);
+});
+
+/* 初始视角对准中国 */
+globe.pointOfView({ lat: 32, lng: 112, altitude: 2.1 }, 0);
+setTimeout(() => globe.pointOfView({ lat: 32, lng: 112, altitude: 1.9 }, 1500), 400);
+
+/* 点击空白处收起卡片 */
+document.getElementById('globe').addEventListener('click', () => card.classList.remove('show'));
+
+/* 自适应 */
+window.addEventListener('resize', () => {
+  globe.width(window.innerWidth).height(window.innerHeight);
+});
+</script>
+</body>
+</html>
